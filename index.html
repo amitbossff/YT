@@ -225,11 +225,18 @@
   }
 
   function searchYouTube() {
-    const query = document.getElementById('searchBox').value.trim();
-    if (!query) return alert("Please enter a search term.");
-    const encoded = encodeURIComponent(query);
-    const url = `https://www.youtube.com/results?search_query=${encoded}&sp=EgIIAQ%253D%253D`; // Last Hour Filter
-    window.open(url, "_blank");
+  const input = document.getElementById('searchBox');
+  const query = input.value.trim();
+
+  if (!query) return alert("Please enter a search term.");
+
+  const encoded = encodeURIComponent(query);
+  const url = `https://www.youtube.com/results?search_query=${encoded}&sp=EgIIAQ%253D%253D`; 
+  window.open(url, "_blank");
+
+  
+  input.value = "";
+  input.placeholder = "Search...";
   }
 
   const YT_API_KEY = "AIzaSyDFvv93DEI4LG-uCwR8EGWm1lQ_i6Ob1n8";
