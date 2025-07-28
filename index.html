@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <title>🎬 Video Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
   <style>
     body {
       background: #121212;
@@ -127,10 +132,9 @@
 </head>
 <body>
 
-<h2>🎬 Video Tracker 
-  
+<h2>🎬 Video Tracker
   <button onclick="resetAll()" style="background:#666;">♻️ Reset</button>
-  </h2>
+</h2>
 
 <!-- 🔍 Search -->
 <input type="text" id="searchBox" placeholder="Search YouTube (Last Hour)" />
@@ -146,10 +150,9 @@
 <!-- 📋 Preview -->
 <textarea id="ytLinks" readonly></textarea>
 
-<!-- ✅ Submit / ♻️ Reset -->
+<!-- ✅ Submit -->
 <div id="btnGroup">
   <button onclick="checkVideos()">✅ Submit</button>
-
 </div>
 
 <!-- Results + Loader -->
@@ -162,40 +165,63 @@
 </div>
 
 <script>
-  const textarea = document.getElementById("ytLinks");
-
-  // Load saved preview on reload
-  window.onload = () => {
-    const saved = localStorage.getItem("yt_preview");
-    if (saved) textarea.value = saved;
+  // 🔥 Firebase Init
+  const firebaseConfig = {
+    apiKey: "AIzaSyDOSmFSpbsfXveaDpozsjDwTbc3yjmcAhg",
+    authDomain: "amittg-tool.firebaseapp.com",
+    databaseURL: "https://amittg-tool-default-rtdb.firebaseio.com",
+    projectId: "amittg-tool",
+    storageBucket: "amittg-tool.firebasestorage.app",
+    messagingSenderId: "873427375036",
+    appId: "1:873427375036:web:315252c835a9dcf6f111b9",
+    measurementId: "G-JTD2DS401H"
   };
 
-  function saveEntry() {
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const ytCollection = db.collection("youtube_links");
+
+  const textarea = document.getElementById("ytLinks");
+
+  // 🔃 Load all saved links in real-time
+  ytCollection.orderBy("serial").onSnapshot(snapshot => {
+    const lines = snapshot.docs.map(doc => `${doc.data().serial} ${doc.data().link}`);
+    textarea.value = lines.join("\n");
+  });
+
+  async function saveEntry() {
     const serial = document.getElementById("serialInput").value.trim();
     const link = document.getElementById("linkInput").value.trim();
     if (!serial || !link) return alert("Enter both Serial and Link.");
 
-    let current = localStorage.getItem("yt_preview") || "";
-    const lines = current.trim().split("\n").filter(Boolean);
-    lines.push(`${serial} ${link}`);
+    try {
+      await ytCollection.doc(serial).set({
+        serial: parseInt(serial),
+        link: link,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
 
-    const sortedLines = lines.sort((a, b) => {
-      const sa = parseInt(a.split(" ")[0]);
-      const sb = parseInt(b.split(" ")[0]);
-      return sa - sb;
-    });
-
-    const updated = sortedLines.join("\n");
-    localStorage.setItem("yt_preview", updated);
-
-    // Force refresh
-    location.reload();
+      showPopup(`✅ Saved Serial #${serial}`);
+      document.getElementById("serialInput").value = "";
+      document.getElementById("linkInput").value = "";
+    } catch (err) {
+      console.error(err);
+      showPopup("❌ Failed to save", false);
+    }
   }
 
-  function resetAll() {
+  async function resetAll() {
+    const snapshot = await ytCollection.get();
+    const batch = db.batch();
+
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
     textarea.value = "";
-    localStorage.removeItem("yt_preview");
     document.getElementById("results").innerHTML = "";
+    showPopup("♻️ All entries reset");
   }
 
   function searchYouTube() {
@@ -297,10 +323,7 @@
     content.innerHTML = message;
 
     popup.style.display = "block";
-
-    setTimeout(() => {
-      popup.style.display = "none";
-    }, 3000);
+    setTimeout(() => popup.style.display = "none", 3000);
   }
 
   async function checkViaApi(videoId, serial) {
