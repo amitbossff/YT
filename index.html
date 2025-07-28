@@ -127,7 +127,10 @@
 </head>
 <body>
 
-<h2>🎬 Video Tracker</h2>
+<h2>🎬 Video Tracker 
+  
+  <button onclick="resetAll()" style="background:#666;">♻️ Reset</button>
+  </h2>
 
 <!-- 🔍 Search -->
 <input type="text" id="searchBox" placeholder="Search YouTube (Last Hour)" />
@@ -146,7 +149,7 @@
 <!-- ✅ Submit / ♻️ Reset -->
 <div id="btnGroup">
   <button onclick="checkVideos()">✅ Submit</button>
-  <button onclick="resetAll()" style="background:#666;">♻️ Reset</button>
+
 </div>
 
 <!-- Results + Loader -->
