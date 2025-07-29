@@ -184,31 +184,43 @@
   const textarea = document.getElementById("ytLinks");
 
   // 🔃 Load all saved links in real-time
-  ytCollection.orderBy("serial").onSnapshot(snapshot => {
-    const lines = snapshot.docs.map(doc => `${doc.data().serial} ${doc.data().link}`);
-    textarea.value = lines.join("\n");
-  });
 
-  async function saveEntry() {
-    const serial = document.getElementById("serialInput").value.trim();
-    const link = document.getElementById("linkInput").value.trim();
-    if (!serial || !link) return alert("Enter both Serial and Link.");
+  ytCollection.orderBy("timestamp", "asc").onSnapshot(snapshot => {
+  const docs = snapshot.docs.map(doc => ({
+    serial: parseInt(doc.data().serial),
+    link: doc.data().link
+  }));
 
-    try {
-      await ytCollection.doc(serial).set({
-        serial: parseInt(serial),
-        link: link,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
+  // ✅ Group by serial number and maintain order
+  docs.sort((a, b) => a.serial - b.serial);
 
-      showPopup(`✅ Saved Serial #${serial}`);
-      document.getElementById("serialInput").value = "";
-      document.getElementById("linkInput").value = "";
-    } catch (err) {
-      console.error(err);
-      showPopup("❌ Failed to save", false);
-    }
+  const lines = docs.map(doc => `${doc.serial} ${doc.link}`);
+  textarea.value = lines.join("\n");
+});
+
+// ✅ Save Entry (no overwrite, allows duplicate serials)
+
+async function saveEntry() {
+  const serial = document.getElementById("serialInput").value.trim();
+  const link = document.getElementById("linkInput").value.trim();
+  if (!serial || !link) return alert("Enter both Serial and Link.");
+
+  try {
+    await ytCollection.add({
+      serial: serial,
+      link: link,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    showPopup(`✅ Saved Serial #${serial}`);
+    document.getElementById("serialInput").value = "";
+    document.getElementById("linkInput").value = "";
+  } catch (err) {
+    console.error(err);
+    showPopup("❌ Failed to save", false);
   }
+}
+  
 
   async function resetAll() {
     const snapshot = await ytCollection.get();
