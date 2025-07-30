@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🎬 Video Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    body {
+      background: #121212;
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #ff4d4d;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      font-size: 15px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+    }
+
+    input::placeholder {
+      color: #888;
+    }
+
+    textarea::placeholder {
+      color: #777;
+    }
+
+    input {
+      background: #fff;
+      color: #000;
+    }
+
+    textarea {
+      height: 140px;
+      resize: vertical;
+      background: #fefefe;
+      color: #000;
+      border: 2px solid #999;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #ff2d55;
+      color: white;
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    button:hover {
+      background: #cc0033;
+    }
+
+    #btnGroup {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .video-block {
+      background: rgba(255,255,255,0.06);
+      border-left: 4px solid #ff4d4d;
+      padding: 12px;
+      border-radius: 12px;
+      margin-bottom: 15px;
+    }
+
+    .video-top {
+      display: flex;
+      align-items: center;
+    }
+
+    .thumb {
+      width: 90px;
+      height: 90px;
+      border-radius: 8px;
+      object-fit: cover;
+      margin-right: 12px;
+      cursor: pointer;
+    }
+
+    .video-title {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .video-serial {
+      color: #f1c40f;
+      font-weight: bold;
+      margin-right: 6px;
+    }
+
+    .not-found {
+      color: #ff6b6b;
+      font-weight: bold;
+    }
+
+    #customPopup {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+    }
+
+    #popupContent {
+      background: #2ecc71;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-weight: bold;
+      border: 2px solid #2ecc71;
+    }
+  </style>
+</head>
+<body>
+
+<h2>🎬 Video Tracker
+  <button onclick="resetAll()" style="background:#666;">♻️ Reset</button>
+</h2>
+
+<!-- 🔍 Search -->
+<input type="text" id="searchBox" placeholder="Search YouTube (Last Hour)" />
+<button onclick="searchYouTube()">🔍 Search</button>
+
+<!-- 📝 Serial & Link -->
+<div style="display:flex;gap:10px;margin-top:15px;">
+  <input type="tel" id="serialInput" placeholder="Serial" style="flex:1;" />
+  <input type="text" id="linkInput" placeholder="YouTube Link" style="flex:3;" />
+  <button onclick="saveEntry()">💾 Save</button>
+</div>
+
+<!-- 📋 Preview -->
+<textarea id="ytLinks" readonly></textarea>
+
+<!-- ✅ Submit -->
+<div id="btnGroup">
+  <button onclick="checkVideos()">✅ Submit</button>
+</div>
+
+<!-- Results + Loader -->
+<div id="loader" style="display:none;">⏳ Tracking... please wait</div>
+<div id="results" class="result"></div>
+
+<!-- Popup -->
+<div id="customPopup" style="display: none;">
+  <div id="popupContent"></div>
+</div>
+
+<script>
+  // 🔥 Firebase Init
+  const firebaseConfig = {
+    apiKey: "AIzaSyDOSmFSpbsfXveaDpozsjDwTbc3yjmcAhg",
+    authDomain: "amittg-tool.firebaseapp.com",
+    databaseURL: "https://amittg-tool-default-rtdb.firebaseio.com",
+    projectId: "amittg-tool",
+    storageBucket: "amittg-tool.firebasestorage.app",
+    messagingSenderId: "873427375036",
+    appId: "1:873427375036:web:315252c835a9dcf6f111b9",
+    measurementId: "G-JTD2DS401H"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const ytCollection = db.collection("youtube_links");
+
+  const textarea = document.getElementById("ytLinks");
+
+  // 🔃 Load all saved links in real-time
+
+  ytCollection.orderBy("timestamp", "asc").onSnapshot(snapshot => {
+  const docs = snapshot.docs.map(doc => ({
+    serial: parseInt(doc.data().serial),
+    link: doc.data().link
+  }));
+
+  // ✅ Group by serial number and maintain order
+  docs.sort((a, b) => a.serial - b.serial);
+
+  const lines = docs.map(doc => `${doc.serial} ${doc.link}`);
+  textarea.value = lines.join("\n");
+});
+
+// ✅ Save Entry (no overwrite, allows duplicate serials)
+
+async function saveEntry() {
+  const serial = document.getElementById("serialInput").value.trim();
+  const link = document.getElementById("linkInput").value.trim();
+  if (!serial || !link) return alert("Enter both Serial and Link.");
+
+  try {
+    await ytCollection.add({
+      serial: serial,
+      link: link,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    showPopup(`✅ Saved Serial #${serial}`);
+    document.getElementById("serialInput").value = "";
+    document.getElementById("linkInput").value = "";
+  } catch (err) {
+    console.error(err);
+    showPopup("❌ Failed to save", false);
+  }
+}
+  
+
+  async function resetAll() {
+    const snapshot = await ytCollection.get();
+    const batch = db.batch();
+
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+    textarea.value = "";
+    document.getElementById("results").innerHTML = "";
+    showPopup("♻️ All entries reset");
+  }
+
+  function searchYouTube() {
+  const input = document.getElementById('searchBox');
+  const query = input.value.trim();
+
+  if (!query) return alert("Please enter a search term.");
+
+  const encoded = encodeURIComponent(query);
+  const url = `https://www.youtube.com/results?search_query=${encoded}&sp=EgIIAQ%253D%253D`; 
+  window.open(url, "_blank");
+
+  
+  input.value = "";
+  input.placeholder = "Search...";
+  }
+
+  const YT_API_KEY = "AIzaSyDFvv93DEI4LG-uCwR8EGWm1lQ_i6Ob1n8";
+
+  function extractVideoID(url) {
+    const regExp = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|embed)\/|.*[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const match = url.match(regExp);
+    return match ? match[1] : null;
+  }
+
+  async function checkVideos() {
+    const input = textarea.value.trim();
+    const lines = input.split("\n");
+    const resultsDiv = document.getElementById("results");
+    const loader = document.getElementById("loader");
+    resultsDiv.innerHTML = "";
+    loader.style.display = "block";
+
+    const tasks = lines.map((line, i) => {
+      line = line.trim();
+      if (!line) return null;
+
+      let serial = "";
+      let url = line;
+
+      const match = line.match(/^(\d+)\.?\s+(https?:\/\/[^\s]+)$/);
+      if (match) {
+        serial = match[1];
+        url = match[2];
+      } else {
+        serial = (i + 1).toString();
+      }
+
+      const videoId = extractVideoID(url);
+      const block = document.createElement("div");
+      block.className = "video-block";
+
+      if (!videoId) {
+        block.innerHTML = `
+          <div class="video-title">
+            <span class="video-serial">${serial}</span>
+            <span class="not-found">❌ Invalid or Not Found</span><br>
+            <a href="${url}" target="_blank">${url}</a>
+          </div>
+        `;
+        return block;
+      }
+
+      return fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
+        .then(res => res.json())
+        .then(data => {
+          block.innerHTML = `
+            <div class="video-top">
+              <img src="https://img.youtube.com/vi/${videoId}/hqdefault.jpg" class="thumb" onclick="window.open('https://youtu.be/${videoId}', '_blank')">
+              <div class="video-info">
+                <div class="video-title">
+                  <span class="video-serial">${serial}</span>${data.title}
+                </div>
+              </div>
+            </div>
+          `;
+          return block;
+        })
+     .catch(async () => {
+  // Automatically call YouTube Data API to determine status
+  const apiURL = `https://www.googleapis.com/youtube/v3/videos?part=status&id=${videoId}&key=${YT_API_KEY}`;
+  try {
+    const res = await fetch(apiURL);
+    const json = await res.json();
+    const status = json.items?.[0]?.status?.uploadStatus || 'deleted';
+    const isAvailable = status.toLowerCase() !== "deleted";
+
+    block.innerHTML = `
+      <div class="video-title">
+        <span class="video-serial">${serial}</span>
+        ${isAvailable ? "✅ Available via API" : "<span class='not-found'>❌ Deleted or Unavailable</span>"}<br>
+        <a href="${url}" target="_blank">${url}</a>
+      </div>
+    `;
+  } catch (err) {
+    block.innerHTML = `
+      <div class="video-title">
+        <span class="video-serial">${serial}</span>
+        <span class="not-found">❌ Not Found</span><br>
+        <a href="${url}" target="_blank">${url}</a>
+      </div>
+    `;
+  }
+  return block;
+});
+
+    });
+
+    const allBlocks = await Promise.all(tasks.map(p => p instanceof Promise ? p : Promise.resolve(p)));
+    allBlocks.forEach(block => {
+      if (block) resultsDiv.appendChild(block);
+    });
+
+    loader.style.display = "none";
+  }
+
+  function showPopup(message, success = true) {
+    const popup = document.getElementById("customPopup");
+    const content = document.getElementById("popupContent");
+
+    content.style.borderColor = success ? "#2ecc71" : "#e74c3c";
+    content.style.background = success ? "#2ecc71" : "#e74c3c";
+    content.innerHTML = message;
+
+    popup.style.display = "block";
+    setTimeout(() => popup.style.display = "none", 3000);
+  }
+
+  async function checkViaApi(videoId, serial) {
+    const apiURL = `https://www.googleapis.com/youtube/v3/videos?part=status&id=${videoId}&key=${YT_API_KEY}`;
+    try {
+      const res = await fetch(apiURL);
+      const json = await res.json();
+
+      if (json.items && json.items.length > 0) {
+        const status = json.items[0].status.uploadStatus;
+        if (status && status.toLowerCase() !== "deleted") {
+          showPopup(`✅ Video #${serial} is available`, true);
+        } else {
+          showPopup(`❌ Video #${serial} is deleted or unavailable`, false);
+        }
+      } else {
+        showPopup(`❌ Video #${serial} not found in database`, false);
+      }
+    } catch (e) {
+      showPopup(`⚠️ Error checking video #${serial}`, false);
+    }
+  }
+</script>
+
+</body>
+</html>
