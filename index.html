@@ -536,7 +536,7 @@ async function showLikes(elem, videoId) {
     const res = await fetch(likeAPI);
     const data = await res.json();
     const likes = data.items?.[0]?.statistics?.likeCount || "0";
-    elem.textContent = `👍 ${likes}`;
+    elem.textContent = `${likes}`;
   } catch {
     elem.textContent = "⚠️ Error";
   }
