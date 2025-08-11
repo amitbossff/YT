@@ -11,105 +11,124 @@
 
   <style>
     * {
-  box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
-}
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-body {
-  background: linear-gradient(135deg, #0d0d0d, #1c1c1c);
-  color: #fff;
-  font-family: 'Segoe UI', sans-serif;
-  margin: 0;
-  padding: 20px;
-}
+    body {
+      background: linear-gradient(135deg, #0d0d0d, #1c1c1c);
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
 
-h2 {
-  text-align: center;
-  font-size: 28px;
-  margin-bottom: 20px;
-  color: #ff4d4d;
-}
+    h2 {
+      text-align: center;
+      font-size: 28px;
+      margin-bottom: 20px;
+      color: #ff4d4d;
+    }
 
-textarea {
-  width: 100%;
-  height: 140px;
-  padding: 14px;
-  font-size: 15px;
-  border-radius: 10px;
-  border: none;
-  background: #1e1e1e;
-  color: #fff;
-  resize: vertical;
-  box-shadow: inset 0 0 4px rgba(255, 255, 255, 0.05);
-}
+    textarea {
+      width: 100%;
+      height: 140px;
+      padding: 14px;
+      font-size: 15px;
+      border-radius: 10px;
+      border: none;
+      background: #1e1e1e;
+      color: #fff;
+      resize: vertical;
+      box-shadow: inset 0 0 4px rgba(255, 255, 255, 0.05);
+    }
 
-button {
-  width: 100%;
-  margin-top: 16px;
-  padding: 14px;
-  font-size: 16px;
-  background: linear-gradient(90deg, #ff0033, #ff6600);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-}
+    button {
+      width: 100%;
+      margin-top: 16px;
+      padding: 14px;
+      font-size: 16px;
+      background: linear-gradient(90deg, #ff0033, #ff6600);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover {
+      transform: scale(1.03);
+    }
 
-#loader {
-  display: none;
-  text-align: center;
-  margin-top: 20px;
-  font-size: 16px;
-  color: #ffd700;
-}
+    #loader {
+      display: none;
+      text-align: center;
+      margin-top: 20px;
+      font-size: 16px;
+      color: #ffd700;
+    }
 
-.video-block {
-  margin-top: 12px;
-  padding: 14px;
-  border-left: 4px solid;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(2px);
-  font-size: 15px;
-  line-height: 1.5;
-}
+    /* Scrollable results container */
+    #results {
+      margin-top: 20px;
+      max-height: 420px;
+      overflow-y: auto;
+      padding: 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 0 12px rgba(255,0,77,0.3);
+    }
 
-.found {
-  border-color: #2ecc71;
-  color: #2ecc71;
-}
+    .video-block {
+      margin-top: 12px;
+      padding: 14px;
+      border-left: 6px solid;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(2px);
+      font-size: 15px;
+      line-height: 1.5;
+    }
 
-.not-found {
-  border-color: #e74c3c;
-  color: #e74c3c;
-}
+    .found {
+      border-color: #2ecc71;
+      color: #2ecc71;
+    }
 
-.not-found a {
-  color: #ff8a8a;
-  text-decoration: underline;
-  word-break: break-word;
-  display: inline-block;
-  margin-top: 4px;
-}
+    .not-found {
+      border-color: #e74c3c;
+      color: #e74c3c;
+    }
 
-::-webkit-scrollbar {
-  width: 8px;
-}
+    .video-block a {
+      text-decoration: underline;
+      word-break: break-word;
+    }
 
-::-webkit-scrollbar-thumb {
-  background: #ff4d4d;
-  border-radius: 10px;
-}
+    .found a {
+      color: #2ecc71;
+    }
 
-::-webkit-scrollbar-track {
-  background: #1a1a1a;
-}
+    .not-found a {
+      color: #ff8a8a;
+    }
 
+    /* Scrollbar style */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #ff4d4d;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1a1a1a;
+    }
   </style>
 </head>
 <body>
 
-  <h2>AmitTG</h2>
+  <h2>🎬 AmitTG</h2>
 
   <textarea id="ytLinks" placeholder="1 https://youtu.be/xyz1234..."></textarea>
   <button onclick="checkAllVideos()">Track Video</button>
@@ -190,7 +209,7 @@ button {
             if (data.items && data.items.length > 0 && data.items[0].status.uploadStatus !== "deleted") {
               const channelTitle = data.items[0].snippet.channelTitle;
               div.classList.add("found");
-              div.innerHTML = `${serial}. ✅ <a href="${videoUrl}" target="_blank" style="color:#2ecc71; text-decoration:underline;">${channelTitle}</a>`;
+              div.innerHTML = `${serial}. ✅ <a href="${videoUrl}" target="_blank">${channelTitle}</a>`;
             } else {
               div.classList.add("not-found");
               div.innerHTML = `${serial}. ❌ Not Found<br><a href="${videoUrl}" target="_blank">${videoUrl}</a>`;
