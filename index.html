@@ -410,6 +410,7 @@
   const db = firebase.firestore();
   const ytCollection = db.collection("youtube_links");
   const YT_API_KEY = "AIzaSyDFvv93DEI4LG-uCwR8EGWm1lQ_i6Ob1n8";
+  const YT_LIKE_KEY = "AIzaSyDXbiFdiB7IzuuPqKrbSfdTg5CUurFknpo";
 
   ytCollection.orderBy("timestamp", "asc").onSnapshot(snapshot => {
     const docs = snapshot.docs.map(doc => ({
