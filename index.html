@@ -708,16 +708,19 @@ function copyAllLinks() {
 
 function showNotFound() {
   const listDiv = document.getElementById("notFoundList");
+
   if (!window.notFoundSerials || window.notFoundSerials.length === 0) {
     listDiv.innerHTML = "<p style='color:#ccc;'>✅ No Not Found videos currently.</p>";
   } else {
     listDiv.innerHTML = window.notFoundSerials
-      .map(num => `<span style="cursor:pointer; color:#ff9900; text-decoration:underline;" onclick="focusSerial('${num}')">${num}</span>`)
-      .join(" &nbsp; ");
+      .map(num => `<span style="cursor:pointer; color:red; font-weight:bold; text-decoration:underline;" onclick="focusSerial('${num}')">${num}</span>`)
+      .join("<br>");
   }
+
   document.getElementById("notFoundModal").style.display = "flex";
 }
 
+  
 function closeNotFound() {
   document.getElementById("notFoundModal").style.display = "none";
 }
