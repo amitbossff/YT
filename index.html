@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes" />
+  <title>AmitTG</title>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --bg: #0a0a0f; --surface: #111118; --card: #16161e; --border: #252530;
+      --red: #ff2d55; --orange: #ff9500; --green: #30d158; --blue: #0a84ff;
+      --yellow: #ffd60a; --text: #f0f0f5; --muted: #8e8e9e;
+      --font-body: 'Inter', system-ui, sans-serif; --font-mono: 'Space Mono', monospace;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); padding-bottom: 70px; }
+    .top-bar {
+      position: sticky; top: 0; z-index: 100; background: rgba(10,10,15,0.96);
+      backdrop-filter: blur(20px); border-bottom: 1px solid var(--border);
+      padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .app-logo { font-size: 18px; font-weight: 800; background: linear-gradient(135deg, var(--red), var(--orange)); -webkit-background-clip: text; background-clip: text; color: transparent; margin-right: auto; white-space: nowrap; }
+    .top-btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+      border-radius: 40px; border: 1px solid transparent; font-size: 12px; font-weight: 600;
+      cursor: pointer; background: var(--surface); transition: 0.2s;
+    }
+    .top-btn.bot-btn { border-color: var(--orange); color: var(--orange); }
+    .top-btn.like-btn { border-color: var(--green); color: var(--green); }
+    .top-btn.view-btn { border-color: var(--blue); color: var(--blue); }
+    .top-btn:active { transform: scale(0.96); }
+    .main { padding: 14px 12px; max-width: 640px; margin: 0 auto; }
+    .search-row { margin-bottom: 12px; }
+    .input-field {
+      width: 100%; padding: 12px 14px; background: var(--card); border: 1.5px solid var(--border);
+      border-radius: 14px; color: var(--text); font-size: 15px; outline: none;
+    }
+    .input-field:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(255,45,85,0.2); }
+    .add-row { display: flex; gap: 10px; margin-bottom: 18px; }
+    .serial-input { flex: 0 0 85px; text-align: center; font-weight: 700; font-family: var(--font-mono); }
+    #frameContainer { border-radius: 18px; max-height: calc(100vh - 320px); overflow-y: auto; }
+    .video-block {
+      background: var(--card); border: 1px solid var(--border); border-radius: 18px;
+      padding: 12px; margin-bottom: 12px; position: relative; transition: 0.1s;
+    }
+    .video-block.success { border-left: 4px solid var(--green); }
+    .video-block.error { border-left: 4px solid var(--red); }
+    .video-top { display: flex; gap: 12px; align-items: flex-start; }
+    .thumb { width: 80px; height: 60px; border-radius: 12px; object-fit: cover; background: var(--surface); flex-shrink: 0; cursor: pointer; }
+    .video-info { flex: 1; min-width: 0; }
+    .video-serial {
+      font-family: var(--font-mono); background: rgba(255,214,10,0.12); padding: 2px 8px;
+      border-radius: 20px; font-size: 12px; font-weight: 700; color: var(--yellow); display: inline-block; margin-bottom: 5px;
+    }
+    .video-title-text { font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer; word-break: break-word; }
+    .video-title-text:hover { color: var(--red); }
+    .not-found { color: var(--red); font-size: 13px; font-weight: 500; }
+    .card-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .action-pill {
+      display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 30px;
+      font-size: 11px; font-weight: 700; background: rgba(48,209,88,0.12); color: var(--green);
+      border: none; cursor: pointer; transition: 0.15s;
+    }
+    .action-pill:active { background: var(--green); color: #000; transform: scale(0.96); }
+    .delete-btn {
+      position: absolute; top: 10px; right: 10px; background: rgba(255,45,85,0.2);
+      border: none; color: var(--red); border-radius: 30px; padding: 4px 10px;
+      font-size: 13px; font-weight: bold; cursor: pointer;
+    }
+    .delete-btn:active { background: var(--red); color: white; }
+    .bottom-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10,10,15,0.96);
+      backdrop-filter: blur(16px); border-top: 1px solid var(--border);
+      padding: 10px 16px; display: flex; justify-content: center; gap: 12px; z-index: 500;
+    }
+    .bottom-btn {
+      flex: 1; max-width: 200px; padding: 12px; border-radius: 60px;
+      border: 1.5px solid var(--red); background: var(--surface); color: var(--red);
+      font-weight: 700; font-size: 14px; text-align: center; cursor: pointer;
+    }
+    .bottom-btn:active { background: var(--red); color: #000; }
+    .bottom-spacer { height: 80px; }
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(8px); z-index: 50000; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      background: var(--card); border: 1px solid var(--border); border-radius: 28px;
+      padding: 20px; width: 100%; max-width: 460px; max-height: 80vh; overflow-y: auto;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-title { font-size: 18px; font-weight: 800; }
+    .modal-close { background: var(--border); border: none; width: 32px; height: 32px; border-radius: 40px; font-size: 18px; cursor: pointer; color: var(--muted); }
+    .links-textarea { width: 100%; background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px; padding: 12px; color: var(--text); font-family: var(--font-mono); font-size: 12px; resize: vertical; height: 200px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .modal-btn { flex: 1; padding: 10px; border-radius: 40px; font-weight: 700; border: none; cursor: pointer; }
+    .btn-blue { background: var(--blue); color: white; }
+    .btn-red { background: var(--red); color: white; }
+    .btn-gray { background: var(--border); color: var(--muted); }
+    .likes-list { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; max-height: 300px; overflow-y: auto; }
+    .likes-row { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border-radius: 14px; padding: 10px 14px; }
+    .likes-serial { font-family: var(--font-mono); font-weight: 700; color: var(--yellow); min-width: 45px; }
+    .likes-count { font-weight: 700; color: var(--green); font-size: 14px; }
+    .likes-del { background: transparent; border: none; color: var(--red); font-size: 16px; cursor: pointer; padding: 0 5px; }
+    .confirm-text { text-align: center; margin-bottom: 20px; font-size: 15px; }
+    .preview-frame { margin-top: 12px; border-radius: 12px; overflow: hidden; background: #000; }
+    .preview-frame iframe { width: 100%; height: 180px; border: none; }
+    .bot-chip { background: rgba(255,149,0,0.2); padding: 8px 14px; border-radius: 40px; font-family: monospace; font-weight: bold; cursor: pointer; display: inline-block; margin: 4px; }
+    #customPopup { position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); z-index: 999999; display: none; }
+    #popupContent { padding: 10px 20px; border-radius: 40px; font-weight: 600; font-size: 13px; background: var(--surface); border: 1px solid var(--border); white-space: nowrap; }
+    .serial-badge { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-left: 6px; }
+    @media (max-width: 480px) { .thumb { width: 70px; height: 52px; } .video-title-text { font-size: 13px; } }
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <span class="app-logo"></span>
+  <button class="top-btn bot-btn" id="notFoundBtn">🤖 Bot <span id="botCount">0</span></button>
+  <button class="top-btn like-btn" id="autoLikesBtn">👍Likes</button>
+  <button class="top-btn view-btn" id="viewsBtn">👁 Views</button>
+</div>
+
+<div class="main">
+  <div class="search-row">
+    <input class="input-field" type="text" id="searchBox" placeholder="🔍 Search YouTube (last hour)" />
+  </div>
+  <div class="add-row">
+    <input class="input-field serial-input" type="tel" id="serialInput" placeholder="Bot#" />
+    <input class="input-field" type="text" id="linkInput" placeholder="YouTube link" style="flex:1;" />
+  </div>
+  <div id="frameContainer">
+    <div id="loader" style="text-align:center; padding:20px;">⏳ Loading videos...</div>
+    <div id="results"></div>
+  </div>
+  <div class="bottom-spacer"></div>
+</div>
+
+<div class="bottom-bar">
+  <button class="bottom-btn" id="allLinksBtn">📋 ALL LINKS</button>
+</div>
+
+<!-- MODALS -->
+<div class="modal-backdrop" id="notFoundModal"><div class="modal-box"><div class="modal-header"><span class="modal-title">🤖 Missing Videos</span><button class="modal-close" onclick="closeModal('notFoundModal')">✕</button></div><div id="notFoundList" style="display:flex;flex-wrap:wrap;gap:6px;"></div></div></div>
+<div class="modal-backdrop" id="likesModal"><div class="modal-box"><div class="modal-header"><span class="modal-title">👍 All Saved Likes</span><button class="modal-close" onclick="closeModal('likesModal')">✕</button></div><div id="likesListContent" class="likes-list"></div><div class="modal-actions"><button class="modal-btn btn-blue" id="copyLikesBtn">📄 Copy</button><button class="modal-btn btn-red" id="clearLikesBtn">🗑 Clear</button></div></div></div>
+<div class="modal-backdrop" id="viewModal"><div class="modal-box"><div class="modal-header"><span class="modal-title">👁 Check Views</span><button class="modal-close" onclick="closeModal('viewModal')">✕</button></div><textarea class="links-textarea" id="viewInput" placeholder="Paste links (one per line)&#10;1 https://youtu.be/...&#10;https://youtu.be/..."></textarea><div class="modal-actions"><button class="modal-btn btn-blue" id="fetchViewsBtn">🔍 Fetch</button><button class="modal-btn btn-gray" id="copyViewsBtn">📋 Copy</button></div><div id="viewsOutput" style="margin-top:12px;font-family:monospace;font-size:12px;white-space:pre-wrap;"></div></div></div>
+<div class="modal-backdrop" id="allLinksModal"><div class="modal-box"><div class="modal-header"><span class="modal-title">📋 All Saved Links</span><button class="modal-close" onclick="closeModal('allLinksModal')">✕</button></div><textarea class="links-textarea" id="allLinksContent" readonly></textarea><div class="modal-actions"><button class="modal-btn btn-blue" id="copyAllLinksBtn">📄 Copy</button><button class="modal-btn btn-red" id="resetFromLinksBtn">♻️ Reset All</button></div></div></div>
+<div class="modal-backdrop" id="deleteConfirmModal"><div class="modal-box" style="max-width:400px;"><div class="modal-header"><span class="modal-title">🗑 Delete Video</span><button class="modal-close" onclick="closeModal('deleteConfirmModal')">✕</button></div><p class="confirm-text" id="deleteConfirmText">Are you sure you want to delete this video?</p><div id="deletePreviewFrame" class="preview-frame"></div><div class="modal-actions" style="margin-top:16px;"><button class="modal-btn btn-red" id="confirmDeleteBtn">Yes, Delete</button><button class="modal-btn btn-gray" id="cancelDeleteBtn">Cancel</button></div></div></div>
+<div class="modal-backdrop" id="resetConfirm"><div class="modal-box" style="max-width:300px;"><p class="confirm-text">⚠️ Delete ALL saved videos?</p><div class="modal-actions"><button class="modal-btn btn-red" id="doResetConfirm">Yes, Delete</button><button class="modal-btn btn-gray" id="closeResetBtn">Cancel</button></div></div></div>
+<div class="modal-backdrop" id="videoModal"><div id="videoModalContent" style="background:#000;border-radius:20px;padding:6px;max-width:520px;width:95%;"><iframe id="modalIframe" style="width:100%;height:260px;border-radius:14px;" allowfullscreen></iframe></div></div>
+<div id="customPopup"><div id="popupContent"></div></div>
+
+<script>
+  // ========== DEDICATED API KEYS ==========
+  // Video availability check
+  const YT_AVAIL_KEY = "AIzaSyD3yRGyEnk8PVb1K2U-yFJzCYONbEOjgbc";
+  // Single video like check (on-demand per card)
+  const YT_SINGLE_LIKE_KEY = "AIzaSyBAhpodfEUjy-RNDx9Ssu6IvVnxNrHWMrc";
+  // Bulk likes (auto likes for all saved videos)
+  const YT_BULK_LIKE_KEY = "AIzaSyDo3IElBZPO1tMlzne4sqHcKTlb1ZmnCU0";
+  // Views check
+  const YT_VIEWS_KEY = "AIzaSyAcrrku8_f6-FMRPrkjcRDyE12LnCRu0ek";
+  
+  // Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyDOSmFSpbsfXveaDpozsjDwTbc3yjmcAhg",
+    authDomain: "amittg-tool.firebaseapp.com",
+    projectId: "amittg-tool",
+    storageBucket: "amittg-tool.appspot.com",
+    messagingSenderId: "873427375036",
+    appId: "1:873427375036:web:315252c835a9dcf6f111b9"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const ytCollection = db.collection("youtube_links");
+
+  window.allYTDocs = [];
+  window.notFoundSerials = [];
+  window.likesStore = {};
+  let pendingDeleteDoc = null;
+
+  function extractVideoID(url) {
+    const regExp = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|embed)\/|.*[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const match = url.match(regExp);
+    return match ? match[1] : null;
+  }
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  function showPopup(msg, isError = false) {
+    const popup = document.getElementById("customPopup");
+    const content = document.getElementById("popupContent");
+    content.style.background = isError ? "var(--red)" : "var(--green)";
+    content.style.color = isError ? "#fff" : "#000";
+    content.textContent = msg;
+    popup.style.display = "block";
+    setTimeout(() => popup.style.display = "none", 2500);
+  }
+
+  // Render video list - sequential order by serial (1,2,31,32 etc - exactly as saved)
+  async function renderVideoList() {
+    const docs = window.allYTDocs || [];
+    const resultsDiv = document.getElementById("results");
+    const loaderDiv = document.getElementById("loader");
+    if(loaderDiv) loaderDiv.style.display = "none";
+    resultsDiv.innerHTML = "";
+    if(docs.length === 0) {
+      resultsDiv.innerHTML = "<div style='text-align:center;padding:30px;color:var(--muted);'>✨ No videos. Add Bot# + YouTube link.</div>";
+      document.getElementById("botCount").innerText = "0";
+      return;
+    }
+    // Sort by serial number (ascending - 1,2,31,32 naturally)
+    const sortedDocs = [...docs].sort((a,b) => a.serial - b.serial);
+    const serialStatus = {};
+    
+    for (const doc of sortedDocs) {
+      const { serial, link, id } = doc;
+      const videoId = extractVideoID(link);
+      const block = document.createElement("div");
+      block.className = "video-block";
+      
+      if (!videoId) {
+        block.classList.add("error");
+        block.innerHTML = `<div class="video-top"><div class="video-info"><span class="video-serial">${serial}</span><span class="not-found">❌ Invalid URL</span><div style="font-size:11px;color:var(--muted);margin-top:5px;">${link.substring(0,45)}</div></div></div>`;
+        addDeleteButton(block, doc, link);
+        resultsDiv.appendChild(block);
+        serialStatus[serial] = { available: false, notFound: true };
+        continue;
+      }
+      
+      // Check availability using AVAIL_KEY
+      try {
+        const availUrl = `https://www.googleapis.com/youtube/v3/videos?part=status&id=${videoId}&key=${YT_AVAIL_KEY}`;
+        const availRes = await fetch(availUrl);
+        const availJson = await availRes.json();
+        const isAvailable = availJson.items && availJson.items[0] && availJson.items[0].status?.uploadStatus !== "deleted";
+        
+        if (isAvailable) {
+          block.classList.add("success");
+          // Try to get title via oembed (no API key needed)
+          let title = "✅ Available";
+          try {
+            const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+            const oembedData = await oembedRes.json();
+            title = oembedData.title;
+          } catch(e) { /* fallback */ }
+          
+          const storedLike = window.likesStore[serial]?.count;
+          const likePlaceholder = storedLike ? `👍 ${storedLike}` : "👍 ?";
+          block.innerHTML = `
+            <div class="video-top">
+              <img class="thumb" src="https://img.youtube.com/vi/${videoId}/hqdefault.jpg" onerror="this.src='https://placehold.co/80x60?text=No+Thumb'" onclick="openVideoModal('${videoId}')">
+              <div class="video-info">
+                <div><span class="video-serial">${serial}</span> <span class="video-title-text" onclick="openVideoModal('${videoId}')">${escapeHtml(title)}</span></div>
+                <div class="card-actions">
+                  <button class="action-pill like-single-btn" data-video="${videoId}" data-serial="${serial}">${likePlaceholder}</button>
+                </div>
+              </div>
+            </div>`;
+          addDeleteButton(block, doc, link);
+          resultsDiv.appendChild(block);
+          serialStatus[serial] = { available: true, notFound: false };
+        } else {
+          block.classList.add("error");
+          block.innerHTML = `<div class="video-top"><div class="video-info"><span class="video-serial">${serial}</span><span class="not-found">❌ Video Not Found/Deleted</span><div style="font-size:10px;color:var(--muted);margin-top:4px;">${link.substring(0,50)}</div></div></div>`;
+          addDeleteButton(block, doc, link);
+          resultsDiv.appendChild(block);
+          serialStatus[serial] = { available: false, notFound: true };
+        }
+      } catch(err) {
+        block.classList.add("error");
+        block.innerHTML = `<div class="video-top"><div class="video-info"><span class="video-serial">${serial}</span><span class="not-found">⚠️ Check failed</span><div style="font-size:10px;color:var(--muted);">${link.substring(0,45)}</div></div></div>`;
+        addDeleteButton(block, doc, link);
+        resultsDiv.appendChild(block);
+        serialStatus[serial] = { available: false, notFound: true };
+      }
+    }
+    
+    // Attach single like buttons (on-demand using SINGLE_LIKE_KEY)
+    document.querySelectorAll('.like-single-btn').forEach(btn => {
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+      newBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const videoId = newBtn.getAttribute('data-video');
+        const serial = newBtn.getAttribute('data-serial');
+        newBtn.textContent = "⏳";
+        try {
+          const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${YT_SINGLE_LIKE_KEY}`);
+          const data = await res.json();
+          const likes = data.items?.[0]?.statistics?.likeCount;
+          const formatted = likes ? parseInt(likes).toLocaleString() : "0";
+          newBtn.textContent = `👍 ${formatted}`;
+          window.likesStore[serial] = { serial: parseInt(serial), count: formatted };
+          showPopup(`#${serial} likes: ${formatted}`);
+        } catch (err) {
+          newBtn.textContent = "⚠️ Error";
+          showPopup(`Failed to fetch #${serial}`, true);
+        }
+      });
+    });
+    
+    window.notFoundSerials = Object.keys(serialStatus).filter(s => serialStatus[s]?.notFound === true);
+    document.getElementById("botCount").innerText = window.notFoundSerials.length;
+  }
+
+  function addDeleteButton(block, doc, link) {
+    const delBtn = document.createElement("button");
+    delBtn.className = "delete-btn";
+    delBtn.textContent = "✕";
+    delBtn.onclick = (e) => {
+      e.stopPropagation();
+      const videoId = extractVideoID(link);
+      const previewDiv = document.getElementById("deletePreviewFrame");
+      if (videoId) {
+        previewDiv.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" style="width:100%; height:180px; border-radius:12px;" allowfullscreen></iframe>`;
+      } else {
+        previewDiv.innerHTML = `<div style="padding:20px;text-align:center;color:var(--muted);">⚠️ Preview not available</div>`;
+      }
+      document.getElementById("deleteConfirmText").innerHTML = `Delete video <strong style="color:var(--red);">#${doc.serial}</strong>?`;
+      pendingDeleteDoc = doc;
+      openModal('deleteConfirmModal');
+    };
+    block.appendChild(delBtn);
+  }
+
+  // AUTO LIKES: fetch all saved videos' likes using BULK_LIKE_KEY
+  async function fetchAllLikes() {
+    const docs = window.allYTDocs || [];
+    if (docs.length === 0) { showPopup("📭 No videos to fetch", true); return; }
+    showPopup(`⏳ Fetching likes for ${docs.length} videos...`);
+    let updated = 0;
+    for (const doc of docs) {
+      const videoId = extractVideoID(doc.link);
+      if (!videoId) continue;
+      try {
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${YT_BULK_LIKE_KEY}`);
+        const data = await res.json();
+        const likes = data.items?.[0]?.statistics?.likeCount;
+        const formatted = likes ? parseInt(likes).toLocaleString() : "0";
+        window.likesStore[doc.serial] = { serial: doc.serial, count: formatted };
+        updated++;
+        const btn = Array.from(document.querySelectorAll('.like-single-btn')).find(b => b.getAttribute('data-serial') == doc.serial);
+        if (btn) btn.textContent = `👍 ${formatted}`;
+      } catch(e) { console.warn("like error", doc.serial); }
+    }
+    showPopup(`✅ Updated ${updated} video likes!`);
+    renderLikesModal();
+    openModal('likesModal');
+  }
+
+  function renderLikesModal() {
+    const container = document.getElementById('likesListContent');
+    const entries = Object.values(window.likesStore);
+    if (!entries.length) { container.innerHTML = `<p style="color:var(--muted);text-align:center;">No likes fetched yet. Tap "Auto Likes" button.</p>`; return; }
+    entries.sort((a,b) => a.serial - b.serial);
+    container.innerHTML = entries.map(e => `
+      <div class="likes-row">
+        <span class="likes-serial">${e.serial}.</span>
+        <span style="flex:1;"></span>
+        <span class="likes-count">${e.count}</span>
+        <button class="likes-del" onclick="deleteLikeEntry('${e.serial}')">🗑</button>
+      </div>
+    `).join('');
+  }
+
+  function deleteLikeEntry(serial) {
+    delete window.likesStore[serial];
+    renderLikesModal();
+    showPopup(`🗑 Removed #${serial} from likes list`);
+  }
+
+  function copyLikesList() {
+    const entries = Object.values(window.likesStore);
+    if (!entries.length) { showPopup("No likes to copy", true); return; }
+    entries.sort((a,b) => a.serial - b.serial);
+    const text = entries.map(e => `${e.serial}. ${e.count}`).join('\n');
+    navigator.clipboard.writeText(text).then(() => showPopup("✅ Likes copied")).catch(() => showPopup("Copy failed", true));
+  }
+
+  function clearLikesStore() {
+    window.likesStore = {};
+    renderLikesModal();
+    showPopup("🗑 Likes cleared");
+  }
+
+  // VIEWS using YT_VIEWS_KEY
+  async function fetchViewsFromInput() {
+    const input = document.getElementById('viewInput').value.trim();
+    const output = document.getElementById('viewsOutput');
+    if (!input) { output.textContent = "⚠️ Paste links"; return; }
+    const lines = input.split('\n').filter(l => l.trim());
+    output.innerHTML = `<span style="color:var(--muted);">⏳ Fetching...</span>`;
+    const results = [];
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i];
+      let parts = line.trim().split(/\s+/);
+      let url = parts[0];
+      let prefix = `${i+1}.`;
+      if (parts.length >= 2 && /^\d+$/.test(parts[0])) { prefix = `${parts[0]}.`; url = parts[1]; }
+      const videoId = extractVideoID(url);
+      if (!videoId) { results.push(`${prefix} Invalid`); continue; }
+      try {
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${YT_VIEWS_KEY}`);
+        const data = await res.json();
+        const views = data.items?.[0]?.statistics?.viewCount;
+        const formatted = views ? parseInt(views).toLocaleString() : "—";
+        results.push(`${prefix} ${formatted}`);
+      } catch { results.push(`${prefix} Error`); }
+    }
+    output.textContent = results.join('\n');
+  }
+
+  function copyViewsResult() {
+    const text = document.getElementById('viewsOutput').innerText;
+    if (!text || text.includes("Paste links") || text.includes("Fetching")) { showPopup("No views data to copy", true); return; }
+    navigator.clipboard.writeText(text).then(() => showPopup("✅ Views copied")).catch(() => showPopup("Copy failed", true));
+  }
+
+  // ALL LINKS - format "serial url" (no dash, just space like "1 https://youtu.be/...")
+  function showAllLinksModal() {
+    const docs = window.allYTDocs || [];
+    const textarea = document.getElementById("allLinksContent");
+    if (docs.length === 0) {
+      textarea.value = "No saved links yet.";
+    } else {
+      const sorted = [...docs].sort((a,b) => a.serial - b.serial);
+      textarea.value = sorted.map(d => `${d.serial} ${d.link}`).join("\n");
+    }
+    openModal('allLinksModal');
+  }
+
+  function copyAllLinks() {
+    const ta = document.getElementById("allLinksContent");
+    if (!ta.value.trim() || ta.value === "No saved links yet.") { showPopup("Nothing to copy", true); return; }
+    navigator.clipboard.writeText(ta.value).then(() => showPopup("✅ Links copied")).catch(() => showPopup("Copy failed", true));
+  }
+
+  async function resetAllData() {
+    const snap = await ytCollection.get();
+    if (snap.empty) { showPopup("No data to reset", true); closeModal("resetConfirm"); return; }
+    const batch = db.batch();
+    snap.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    window.likesStore = {};
+    showPopup("♻️ All videos deleted");
+    closeModal("resetConfirm");
+  }
+
+  async function trySaveEntry() {
+    const serialRaw = document.getElementById("serialInput").value.trim();
+    const link = document.getElementById("linkInput").value.trim();
+    const videoId = extractVideoID(link);
+    if (!serialRaw || !link || !videoId) { showPopup("❌ Valid Bot# and YouTube link", true); return false; }
+    const serialNum = parseInt(serialRaw);
+    if (isNaN(serialNum)) { showPopup("Bot# must be number", true); return false; }
+    const existing = window.allYTDocs.find(d => d.serial === serialNum);
+    if (existing) { showPopup(`⚠️ Bot# ${serialNum} already exists!`, true); return false; }
+    await ytCollection.add({ serial: serialNum, link, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+    document.getElementById("serialInput").value = "";
+    document.getElementById("linkInput").value = "";
+    showPopup(`✅ Saved #${serialNum}`);
+    return true;
+  }
+
+  function handleSearchInput() {
+    const q = document.getElementById('searchBox').value.trim();
+    if (q.length > 2) {
+      window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=EgIIAQ%253D%253D`, "_blank");
+      document.getElementById('searchBox').value = "";
+      showPopup("🔍 Opening YouTube search");
+    } else if (q.length > 0 && q.length <= 2) {
+      showPopup("Type at least 3 characters", true);
+    }
+  }
+
+  function showNotFoundModal() {
+    const container = document.getElementById("notFoundList");
+    if (!window.notFoundSerials.length) container.innerHTML = "<div style='padding:10px;color:var(--green);'>✅ All videos available!</div>";
+    else container.innerHTML = window.notFoundSerials.map(s => `<span class="bot-chip" onclick="focusSerial('${s}')">${s}</span>`).join('');
+    openModal('notFoundModal');
+  }
+
+  window.focusSerial = (serial) => {
+    closeModal('notFoundModal');
+    const span = Array.from(document.querySelectorAll(".video-serial")).find(s => s.innerText.trim() == serial);
+    if (span) {
+      const block = span.closest(".video-block");
+      block?.scrollIntoView({ behavior: "smooth", block: "center" });
+      block.style.border = "2px solid var(--yellow)";
+      setTimeout(() => { if(block) block.style.border = ""; }, 2000);
+    } else showPopup(`#${serial} not found`, true);
+  };
+
+  function openVideoModal(videoId) { document.getElementById("modalIframe").src = `https://www.youtube.com/embed/${videoId}`; openModal("videoModal"); }
+
+  function escapeHtml(str) { if(!str) return ""; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
+
+  // Firebase snapshot
+  ytCollection.orderBy("timestamp", "asc").onSnapshot(snapshot => {
+    const docs = snapshot.docs.map(doc => ({ id: doc.id, serial: parseInt(doc.data().serial), link: doc.data().link }));
+    docs.sort((a,b) => a.serial - b.serial);
+    window.allYTDocs = docs;
+    renderVideoList();
+  });
+
+  // Event bindings
+  document.getElementById("serialInput").addEventListener("input", function() { if(this.value.trim().length === 2) document.getElementById("linkInput").focus(); });
+  document.getElementById("linkInput").addEventListener("input", function() { const s=document.getElementById("serialInput").value.trim(); if(s && extractVideoID(this.value.trim())) trySaveEntry(); });
+  document.getElementById("searchBox").addEventListener("input", handleSearchInput);
+  document.getElementById("notFoundBtn").addEventListener("click", showNotFoundModal);
+  document.getElementById("autoLikesBtn").addEventListener("click", fetchAllLikes);
+  document.getElementById("viewsBtn").addEventListener("click", () => openModal("viewModal"));
+  document.getElementById("fetchViewsBtn").addEventListener("click", fetchViewsFromInput);
+  document.getElementById("copyViewsBtn").addEventListener("click", copyViewsResult);
+  document.getElementById("allLinksBtn").addEventListener("click", showAllLinksModal);
+  document.getElementById("copyAllLinksBtn").addEventListener("click", copyAllLinks);
+  document.getElementById("resetFromLinksBtn").addEventListener("click", () => openModal("resetConfirm"));
+  document.getElementById("doResetConfirm").addEventListener("click", resetAllData);
+  document.getElementById("closeResetBtn").addEventListener("click", () => closeModal("resetConfirm"));
+  document.getElementById("copyLikesBtn").addEventListener("click", copyLikesList);
+  document.getElementById("clearLikesBtn").addEventListener("click", clearLikesStore);
+  document.getElementById("confirmDeleteBtn").addEventListener("click", async () => { if(pendingDeleteDoc) { await ytCollection.doc(pendingDeleteDoc.id).delete(); showPopup(`🗑 Deleted #${pendingDeleteDoc.serial}`); pendingDeleteDoc = null; } closeModal('deleteConfirmModal'); });
+  document.getElementById("cancelDeleteBtn").addEventListener("click", () => { pendingDeleteDoc = null; closeModal('deleteConfirmModal'); });
+  document.querySelectorAll(".modal-backdrop").forEach(back => { back.addEventListener("click", (e) => { if(e.target === back) closeModal(back.id); }); });
+  document.getElementById("videoModal").addEventListener("click", (e) => { if(e.target === document.getElementById("videoModal")) { closeModal("videoModal"); document.getElementById("modalIframe").src = ""; } });
+</script>
+</body>
+</html>
