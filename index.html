@@ -104,8 +104,10 @@
     .btn-gray { background: var(--border); color: var(--muted); }
     .likes-list { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; max-height: 300px; overflow-y: auto; }
     .likes-row { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border-radius: 14px; padding: 10px 14px; }
-    .likes-serial { font-family: var(--font-mono); font-weight: 700; color: var(--yellow); min-width: 45px; }
-    .likes-count { font-weight: 700; color: var(--green); font-size: 14px; }
+    .likes-serial { font-family: var(--font-mono); font-weight: 700; color: var(--yellow); min-width: 55px; }
+    .likes-count { font-weight: 700; font-size: 13px; }
+    .likes-count.has-likes { color: var(--green); }
+    .likes-count.no-likes { color: var(--red); }
     .likes-del { background: transparent; border: none; color: var(--red); font-size: 16px; cursor: pointer; padding: 0 5px; }
     .confirm-text { text-align: center; margin-bottom: 20px; font-size: 15px; }
     .preview-frame { margin-top: 12px; border-radius: 12px; overflow: hidden; background: #000; }
@@ -113,14 +115,13 @@
     .bot-chip { background: rgba(255,149,0,0.2); padding: 8px 14px; border-radius: 40px; font-family: monospace; font-weight: bold; cursor: pointer; display: inline-block; margin: 4px; }
     #customPopup { position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); z-index: 999999; display: none; }
     #popupContent { padding: 10px 20px; border-radius: 40px; font-weight: 600; font-size: 13px; background: var(--surface); border: 1px solid var(--border); white-space: nowrap; }
-    .serial-badge { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-left: 6px; }
     @media (max-width: 480px) { .thumb { width: 70px; height: 52px; } .video-title-text { font-size: 13px; } }
   </style>
 </head>
 <body>
 
 <div class="top-bar">
-  <span class="app-logo">Amit</span>
+  <span class="app-logo">AmitTG</span>
   <button class="top-btn bot-btn" id="notFoundBtn">🤖 Bot <span id="botCount">0</span></button>
   <button class="top-btn like-btn" id="autoLikesBtn">👍Likes</button>
   <button class="top-btn view-btn" id="viewsBtn">👁 Views</button>
@@ -147,7 +148,7 @@
 
 <!-- MODALS -->
 <div class="modal-backdrop" id="notFoundModal"><div class="modal-box"><div class="modal-header"><span class="modal-title">🤖 Missing Videos</span><button class="modal-close" onclick="closeModal('notFoundModal')">✕</button></div><div id="notFoundList" style="display:flex;flex-wrap:wrap;gap:6px;"></div></div></div>
-<div class="modal-backdrop" id="likesModal"><div class="modal-box"><div class="modal-header"><span class="modal-title">👍 All Saved Likes</span><button class="modal-close" onclick="closeModal('likesModal')">✕</button></div><div id="likesListContent" class="likes-list"></div><div class="modal-actions"><button class="modal-btn btn-blue" id="copyLikesBtn">📄 Copy</button><button class="modal-btn btn-red" id="clearLikesBtn">🗑 Clear</button></div></div></div>
+<div class="modal-backdrop" id="likesModal"><div class="modal-box"><div class="modal-header"><span class="modal-title">👍 Bulk Likes Result</span><button class="modal-close" onclick="closeModal('likesModal')">✕</button></div><div id="likesListContent" class="likes-list"></div><div class="modal-actions"><button class="modal-btn btn-blue" id="copyLikesBtn">📄 Copy</button><button class="modal-btn btn-red" id="clearLikesBtn">🗑 Clear</button></div></div></div>
 <div class="modal-backdrop" id="viewModal"><div class="modal-box"><div class="modal-header"><span class="modal-title">👁 Check Views</span><button class="modal-close" onclick="closeModal('viewModal')">✕</button></div><textarea class="links-textarea" id="viewInput" placeholder="Paste links (one per line)&#10;1 https://youtu.be/...&#10;https://youtu.be/..."></textarea><div class="modal-actions"><button class="modal-btn btn-blue" id="fetchViewsBtn">🔍 Fetch</button><button class="modal-btn btn-gray" id="copyViewsBtn">📋 Copy</button></div><div id="viewsOutput" style="margin-top:12px;font-family:monospace;font-size:12px;white-space:pre-wrap;"></div></div></div>
 <div class="modal-backdrop" id="allLinksModal"><div class="modal-box"><div class="modal-header"><span class="modal-title">📋 All Saved Links</span><button class="modal-close" onclick="closeModal('allLinksModal')">✕</button></div><textarea class="links-textarea" id="allLinksContent" readonly></textarea><div class="modal-actions"><button class="modal-btn btn-blue" id="copyAllLinksBtn">📄 Copy</button><button class="modal-btn btn-red" id="resetFromLinksBtn">♻️ Reset All</button></div></div></div>
 <div class="modal-backdrop" id="deleteConfirmModal"><div class="modal-box" style="max-width:400px;"><div class="modal-header"><span class="modal-title">🗑 Delete Video</span><button class="modal-close" onclick="closeModal('deleteConfirmModal')">✕</button></div><p class="confirm-text" id="deleteConfirmText">Are you sure you want to delete this video?</p><div id="deletePreviewFrame" class="preview-frame"></div><div class="modal-actions" style="margin-top:16px;"><button class="modal-btn btn-red" id="confirmDeleteBtn">Yes, Delete</button><button class="modal-btn btn-gray" id="cancelDeleteBtn">Cancel</button></div></div></div>
@@ -157,13 +158,9 @@
 
 <script>
   // ========== DEDICATED API KEYS ==========
-  // Video availability check
   const YT_AVAIL_KEY = "AIzaSyD3yRGyEnk8PVb1K2U-yFJzCYONbEOjgbc";
-  // Single video like check (on-demand per card)
   const YT_SINGLE_LIKE_KEY = "AIzaSyBAhpodfEUjy-RNDx9Ssu6IvVnxNrHWMrc";
-  // Bulk likes (auto likes for all saved videos)
   const YT_BULK_LIKE_KEY = "AIzaSyDo3IElBZPO1tMlzne4sqHcKTlb1ZmnCU0";
-  // Views check
   const YT_VIEWS_KEY = "AIzaSyAcrrku8_f6-FMRPrkjcRDyE12LnCRu0ek";
   
   // Firebase
@@ -181,7 +178,9 @@
 
   window.allYTDocs = [];
   window.notFoundSerials = [];
-  window.likesStore = {};
+  window.likesStore = {}; // { "serial_docId": { serial, count, docId } } but for display we group by serial? Actually each video entry has its own like
+  // For bulk likes modal: store each video's like result with unique identifier
+  window.bulkLikesResults = []; // array of { serial, count, docId, title }
   let pendingDeleteDoc = null;
 
   function extractVideoID(url) {
@@ -201,7 +200,7 @@
     setTimeout(() => popup.style.display = "none", 2500);
   }
 
-  // Render video list - sequential order by serial (1,2,31,32 etc - exactly as saved)
+  // Render video list - allow multiple same serial numbers
   async function renderVideoList() {
     const docs = window.allYTDocs || [];
     const resultsDiv = document.getElementById("results");
@@ -213,26 +212,27 @@
       document.getElementById("botCount").innerText = "0";
       return;
     }
-    // Sort by serial number (ascending - 1,2,31,32 naturally)
+    // Sort by serial number (ascending) - multiple same serials show in order added
     const sortedDocs = [...docs].sort((a,b) => a.serial - b.serial);
-    const serialStatus = {};
+    const notFoundList = [];
     
     for (const doc of sortedDocs) {
       const { serial, link, id } = doc;
       const videoId = extractVideoID(link);
       const block = document.createElement("div");
       block.className = "video-block";
+      block.setAttribute("data-docid", id);
       
       if (!videoId) {
         block.classList.add("error");
         block.innerHTML = `<div class="video-top"><div class="video-info"><span class="video-serial">${serial}</span><span class="not-found">❌ Invalid URL</span><div style="font-size:11px;color:var(--muted);margin-top:5px;">${link.substring(0,45)}</div></div></div>`;
         addDeleteButton(block, doc, link);
         resultsDiv.appendChild(block);
-        serialStatus[serial] = { available: false, notFound: true };
+        notFoundList.push(serial);
         continue;
       }
       
-      // Check availability using AVAIL_KEY
+      // Check availability
       try {
         const availUrl = `https://www.googleapis.com/youtube/v3/videos?part=status&id=${videoId}&key=${YT_AVAIL_KEY}`;
         const availRes = await fetch(availUrl);
@@ -241,7 +241,6 @@
         
         if (isAvailable) {
           block.classList.add("success");
-          // Try to get title via oembed (no API key needed)
           let title = "✅ Available";
           try {
             const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
@@ -249,7 +248,9 @@
             title = oembedData.title;
           } catch(e) { /* fallback */ }
           
-          const storedLike = window.likesStore[serial]?.count;
+          // Check if we have stored like for this specific doc
+          const storedLikeKey = `${serial}_${id}`;
+          const storedLike = window.likesStore[storedLikeKey]?.count;
           const likePlaceholder = storedLike ? `👍 ${storedLike}` : "👍 ?";
           block.innerHTML = `
             <div class="video-top">
@@ -257,30 +258,29 @@
               <div class="video-info">
                 <div><span class="video-serial">${serial}</span> <span class="video-title-text" onclick="openVideoModal('${videoId}')">${escapeHtml(title)}</span></div>
                 <div class="card-actions">
-                  <button class="action-pill like-single-btn" data-video="${videoId}" data-serial="${serial}">${likePlaceholder}</button>
+                  <button class="action-pill like-single-btn" data-video="${videoId}" data-serial="${serial}" data-docid="${id}">${likePlaceholder}</button>
                 </div>
               </div>
             </div>`;
           addDeleteButton(block, doc, link);
           resultsDiv.appendChild(block);
-          serialStatus[serial] = { available: true, notFound: false };
         } else {
           block.classList.add("error");
           block.innerHTML = `<div class="video-top"><div class="video-info"><span class="video-serial">${serial}</span><span class="not-found">❌ Video Not Found/Deleted</span><div style="font-size:10px;color:var(--muted);margin-top:4px;">${link.substring(0,50)}</div></div></div>`;
           addDeleteButton(block, doc, link);
           resultsDiv.appendChild(block);
-          serialStatus[serial] = { available: false, notFound: true };
+          notFoundList.push(serial);
         }
       } catch(err) {
         block.classList.add("error");
         block.innerHTML = `<div class="video-top"><div class="video-info"><span class="video-serial">${serial}</span><span class="not-found">⚠️ Check failed</span><div style="font-size:10px;color:var(--muted);">${link.substring(0,45)}</div></div></div>`;
         addDeleteButton(block, doc, link);
         resultsDiv.appendChild(block);
-        serialStatus[serial] = { available: false, notFound: true };
+        notFoundList.push(serial);
       }
     }
     
-    // Attach single like buttons (on-demand using SINGLE_LIKE_KEY)
+    // Attach single like buttons (on-demand)
     document.querySelectorAll('.like-single-btn').forEach(btn => {
       const newBtn = btn.cloneNode(true);
       btn.parentNode.replaceChild(newBtn, btn);
@@ -288,6 +288,7 @@
         e.stopPropagation();
         const videoId = newBtn.getAttribute('data-video');
         const serial = newBtn.getAttribute('data-serial');
+        const docId = newBtn.getAttribute('data-docid');
         newBtn.textContent = "⏳";
         try {
           const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${YT_SINGLE_LIKE_KEY}`);
@@ -295,7 +296,8 @@
           const likes = data.items?.[0]?.statistics?.likeCount;
           const formatted = likes ? parseInt(likes).toLocaleString() : "0";
           newBtn.textContent = `👍 ${formatted}`;
-          window.likesStore[serial] = { serial: parseInt(serial), count: formatted };
+          const key = `${serial}_${docId}`;
+          window.likesStore[key] = { serial: parseInt(serial), count: formatted, docId };
           showPopup(`#${serial} likes: ${formatted}`);
         } catch (err) {
           newBtn.textContent = "⚠️ Error";
@@ -304,7 +306,8 @@
       });
     });
     
-    window.notFoundSerials = Object.keys(serialStatus).filter(s => serialStatus[s]?.notFound === true);
+    // Remove duplicate serials for notFound display (just show unique missing serials)
+    window.notFoundSerials = [...new Set(notFoundList)];
     document.getElementById("botCount").innerText = window.notFoundSerials.length;
   }
 
@@ -328,64 +331,83 @@
     block.appendChild(delBtn);
   }
 
-  // AUTO LIKES: fetch all saved videos' likes using BULK_LIKE_KEY
+  // BULK LIKES: fetch all videos, show "Delete" if likes = 0 or null
   async function fetchAllLikes() {
     const docs = window.allYTDocs || [];
     if (docs.length === 0) { showPopup("📭 No videos to fetch", true); return; }
     showPopup(`⏳ Fetching likes for ${docs.length} videos...`);
-    let updated = 0;
+    const results = [];
+    
     for (const doc of docs) {
       const videoId = extractVideoID(doc.link);
-      if (!videoId) continue;
-      try {
-        const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${YT_BULK_LIKE_KEY}`);
-        const data = await res.json();
-        const likes = data.items?.[0]?.statistics?.likeCount;
-        const formatted = likes ? parseInt(likes).toLocaleString() : "0";
-        window.likesStore[doc.serial] = { serial: doc.serial, count: formatted };
-        updated++;
-        const btn = Array.from(document.querySelectorAll('.like-single-btn')).find(b => b.getAttribute('data-serial') == doc.serial);
-        if (btn) btn.textContent = `👍 ${formatted}`;
-      } catch(e) { console.warn("like error", doc.serial); }
+      let likeText = "Delete";
+      if (!videoId) {
+        likeText = "Delete";
+      } else {
+        try {
+          const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${YT_BULK_LIKE_KEY}`);
+          const data = await res.json();
+          const likes = data.items?.[0]?.statistics?.likeCount;
+          if (likes !== undefined && likes !== null && parseInt(likes) > 0) {
+            likeText = parseInt(likes).toLocaleString();
+          } else {
+            likeText = "Delete";
+          }
+          // Store in likesStore for UI update
+          const key = `${doc.serial}_${doc.id}`;
+          window.likesStore[key] = { serial: doc.serial, count: likeText === "Delete" ? "Delete" : likeText, docId: doc.id };
+          // Update button if exists
+          const btn = Array.from(document.querySelectorAll('.like-single-btn')).find(b => b.getAttribute('data-docid') == doc.id);
+          if (btn) btn.textContent = `👍 ${likeText === "Delete" ? "Delete" : likeText}`;
+        } catch(e) {
+          likeText = "Delete";
+        }
+      }
+      results.push({ serial: doc.serial, count: likeText, docId: doc.id, link: doc.link });
     }
-    showPopup(`✅ Updated ${updated} video likes!`);
-    renderLikesModal();
+    
+    window.bulkLikesResults = results;
+    renderBulkLikesModal();
     openModal('likesModal');
+    showPopup(`✅ Fetched ${results.length} videos`);
   }
 
-  function renderLikesModal() {
+  function renderBulkLikesModal() {
     const container = document.getElementById('likesListContent');
-    const entries = Object.values(window.likesStore);
-    if (!entries.length) { container.innerHTML = `<p style="color:var(--muted);text-align:center;">No likes fetched yet. Tap "Auto Likes" button.</p>`; return; }
-    entries.sort((a,b) => a.serial - b.serial);
-    container.innerHTML = entries.map(e => `
+    if (!window.bulkLikesResults.length) { 
+      container.innerHTML = `<p style="color:var(--muted);text-align:center;">No results. Tap "Auto Likes" button.</p>`; 
+      return; 
+    }
+    // Sort by serial
+    const sorted = [...window.bulkLikesResults].sort((a,b) => a.serial - b.serial);
+    container.innerHTML = sorted.map(r => `
       <div class="likes-row">
-        <span class="likes-serial">${e.serial}.</span>
-        <span style="flex:1;"></span>
-        <span class="likes-count">${e.count}</span>
-        <button class="likes-del" onclick="deleteLikeEntry('${e.serial}')">🗑</button>
+        <span class="likes-serial">${r.serial}.</span>
+        <span style="flex:1; font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${r.link.substring(0,40)}...</span>
+        <span class="likes-count ${r.count === "Delete" ? 'no-likes' : 'has-likes'}">${r.count === "Delete" ? '🗑 Delete' : `👍 ${r.count}`}</span>
+        <button class="likes-del" onclick="deleteBulkEntry('${r.docId}')">✕</button>
       </div>
     `).join('');
   }
 
-  function deleteLikeEntry(serial) {
-    delete window.likesStore[serial];
-    renderLikesModal();
-    showPopup(`🗑 Removed #${serial} from likes list`);
+  function deleteBulkEntry(docId) {
+    // Remove from bulk results and also delete from Firestore if user wants? For now just remove from modal view
+    window.bulkLikesResults = window.bulkLikesResults.filter(r => r.docId !== docId);
+    renderBulkLikesModal();
+    showPopup(`Removed from list`);
   }
 
-  function copyLikesList() {
-    const entries = Object.values(window.likesStore);
-    if (!entries.length) { showPopup("No likes to copy", true); return; }
-    entries.sort((a,b) => a.serial - b.serial);
-    const text = entries.map(e => `${e.serial}. ${e.count}`).join('\n');
-    navigator.clipboard.writeText(text).then(() => showPopup("✅ Likes copied")).catch(() => showPopup("Copy failed", true));
+  function copyBulkLikes() {
+    if (!window.bulkLikesResults.length) { showPopup("No data to copy", true); return; }
+    const sorted = [...window.bulkLikesResults].sort((a,b) => a.serial - b.serial);
+    const text = sorted.map(r => `${r.serial}. ${r.count === "Delete" ? "Delete" : r.count}`).join('\n');
+    navigator.clipboard.writeText(text).then(() => showPopup("✅ Copied")).catch(() => showPopup("Copy failed", true));
   }
 
-  function clearLikesStore() {
-    window.likesStore = {};
-    renderLikesModal();
-    showPopup("🗑 Likes cleared");
+  function clearBulkLikes() {
+    window.bulkLikesResults = [];
+    renderBulkLikesModal();
+    showPopup("🗑 Cleared");
   }
 
   // VIEWS using YT_VIEWS_KEY
@@ -421,7 +443,7 @@
     navigator.clipboard.writeText(text).then(() => showPopup("✅ Views copied")).catch(() => showPopup("Copy failed", true));
   }
 
-  // ALL LINKS - format "serial url" (no dash, just space like "1 https://youtu.be/...")
+  // ALL LINKS - format "serial url" (allow multiple same serial)
   function showAllLinksModal() {
     const docs = window.allYTDocs || [];
     const textarea = document.getElementById("allLinksContent");
@@ -447,10 +469,12 @@
     snap.docs.forEach(doc => batch.delete(doc.ref));
     await batch.commit();
     window.likesStore = {};
+    window.bulkLikesResults = [];
     showPopup("♻️ All videos deleted");
     closeModal("resetConfirm");
   }
 
+  // Save entry - ALLOW MULTIPLE SAME SERIAL (removed duplicate check)
   async function trySaveEntry() {
     const serialRaw = document.getElementById("serialInput").value.trim();
     const link = document.getElementById("linkInput").value.trim();
@@ -458,8 +482,7 @@
     if (!serialRaw || !link || !videoId) { showPopup("❌ Valid Bot# and YouTube link", true); return false; }
     const serialNum = parseInt(serialRaw);
     if (isNaN(serialNum)) { showPopup("Bot# must be number", true); return false; }
-    const existing = window.allYTDocs.find(d => d.serial === serialNum);
-    if (existing) { showPopup(`⚠️ Bot# ${serialNum} already exists!`, true); return false; }
+    // REMOVED duplicate serial check - now allows multiple with same serial
     await ytCollection.add({ serial: serialNum, link, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
     document.getElementById("serialInput").value = "";
     document.getElementById("linkInput").value = "";
@@ -487,9 +510,10 @@
 
   window.focusSerial = (serial) => {
     closeModal('notFoundModal');
-    const span = Array.from(document.querySelectorAll(".video-serial")).find(s => s.innerText.trim() == serial);
-    if (span) {
-      const block = span.closest(".video-block");
+    const spans = Array.from(document.querySelectorAll(".video-serial"));
+    const targetSpan = spans.find(s => s.innerText.trim() == serial);
+    if (targetSpan) {
+      const block = targetSpan.closest(".video-block");
       block?.scrollIntoView({ behavior: "smooth", block: "center" });
       block.style.border = "2px solid var(--yellow)";
       setTimeout(() => { if(block) block.style.border = ""; }, 2000);
@@ -522,8 +546,8 @@
   document.getElementById("resetFromLinksBtn").addEventListener("click", () => openModal("resetConfirm"));
   document.getElementById("doResetConfirm").addEventListener("click", resetAllData);
   document.getElementById("closeResetBtn").addEventListener("click", () => closeModal("resetConfirm"));
-  document.getElementById("copyLikesBtn").addEventListener("click", copyLikesList);
-  document.getElementById("clearLikesBtn").addEventListener("click", clearLikesStore);
+  document.getElementById("copyLikesBtn").addEventListener("click", copyBulkLikes);
+  document.getElementById("clearLikesBtn").addEventListener("click", clearBulkLikes);
   document.getElementById("confirmDeleteBtn").addEventListener("click", async () => { if(pendingDeleteDoc) { await ytCollection.doc(pendingDeleteDoc.id).delete(); showPopup(`🗑 Deleted #${pendingDeleteDoc.serial}`); pendingDeleteDoc = null; } closeModal('deleteConfirmModal'); });
   document.getElementById("cancelDeleteBtn").addEventListener("click", () => { pendingDeleteDoc = null; closeModal('deleteConfirmModal'); });
   document.querySelectorAll(".modal-backdrop").forEach(back => { back.addEventListener("click", (e) => { if(e.target === back) closeModal(back.id); }); });
